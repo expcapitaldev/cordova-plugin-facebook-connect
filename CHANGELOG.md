@@ -1,4 +1,10 @@
 <a name="2.1.0"></a>
+# [2.1.0-dev](https://github.com/expcapitaldev/cordova-plugin-facebook-connect/tree/2.1.0-dev) (2021-04-02)
+
+## Bug Fixes
+
+* iOS: callback added  from clicking by overlay
+
 # [2.1.0](https://github.com/cordova-plugin-facebook-connect/cordova-plugin-facebook-connect/releases/tag/v2.1.0) (2021-03-06)
 
 ## Features
