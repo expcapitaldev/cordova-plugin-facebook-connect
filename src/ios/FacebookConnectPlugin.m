@@ -13,12 +13,33 @@
 #import "FacebookConnectPlugin.h"
 #import <objc/runtime.h>
 
+static NSString *const kCancelledDomain = @"LoginCancelled";
+static NSString *const kCancelledErrorMessage = @"User cancelled";
+
+@interface FBViewController : UIViewController
+    @property (nonatomic, copy) void (^presentedHandler)(UIViewController *presented);
+@end
+
+@implementation FBViewController
+ - (UIViewController*) presentedViewController
+ {
+     UIViewController* presented = [super presentedViewController];
+     self.presentedHandler(presented);
+     return presented;
+ }
+@end
+
 @interface FacebookConnectPlugin ()
 
 @property (strong, nonatomic) NSString* dialogCallbackId;
 @property (strong, nonatomic) FBSDKLoginManager *loginManager;
 @property (strong, nonatomic) NSString* gameRequestDialogCallbackId;
 @property (nonatomic, assign) BOOL applicationWasActivated;
+
+
+@property (nonatomic) BOOL loginStarted;
+@property (nonatomic, strong) FBViewController* internalViewController;
+@property (nonatomic) BOOL loginControllerShown;
 
 - (NSDictionary *)responseObject;
 - (NSDictionary*)parseURLParams:(NSString *)query;
@@ -39,8 +60,8 @@
                                              selector:@selector(applicationDidBecomeActive:)
                                                  name:UIApplicationDidBecomeActiveNotification object:nil];
 
-    [[NSNotificationCenter defaultCenter] addObserver:self 
-                                         selector:@selector(handleOpenURLWithAppSourceAndAnnotation:) 
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                         selector:@selector(handleOpenURLWithAppSourceAndAnnotation:)
                                              name:CDVPluginHandleOpenURLWithAppSourceAndAnnotationNotification object:nil];
 }
 
@@ -171,7 +192,7 @@
     [self.commandDelegate runInBackground:^{
         double value = [[command.arguments objectAtIndex:0] doubleValue];
         NSString *currency = [command.arguments objectAtIndex:1];
-        
+
         if ([command.arguments count] == 2 ) {
             [FBSDKAppEvents logPurchase:value currency:currency];
         } else if ([command.arguments count] >= 3) {
@@ -198,6 +219,7 @@
     [FBSDKAccessToken refreshCurrentAccessToken:nil];
 
     FBSDKLoginManagerLoginResultBlock loginHandler = ^void(FBSDKLoginManagerLoginResult *result, NSError *error) {
+        [self didFinishLogin: error command:command];
         if (error) {
             // If the SDK has a message for the user, surface it.
             NSString *errorMessage = error.userInfo[FBSDKErrorLocalizedDescriptionKey] ?: @"There was a problem logging you in.";
@@ -207,7 +229,7 @@
             return;
         } else if (result.isCancelled) {
             CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
-                                                              messageAsString:@"User cancelled."];
+                                                              messageAsString:kCancelledErrorMessage];
             [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         } else {
             CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
@@ -221,11 +243,7 @@
         if (permissions == nil) {
             permissions = @[];
         }
-
-        if (self.loginManager == nil) {
-            self.loginManager = [[FBSDKLoginManager alloc] init];
-        }
-        [self.loginManager logInWithPermissions:permissions fromViewController:[self topMostController] handler:loginHandler];
+        [self loginWithPermissions:permissions command:command withHandler:loginHandler];
         return;
     }
 
@@ -238,8 +256,7 @@
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         return;
     }
-
-    [self loginWithPermissions:permissions withHandler:loginHandler];
+    [self loginWithPermissions:permissions command:command withHandler:loginHandler];
 
 }
 
@@ -251,21 +268,21 @@
     if ([command.arguments count] > 0) {
         permissions = command.arguments;
     }
-    
-    NSSet *grantedPermissions = [FBSDKAccessToken currentAccessToken].permissions; 
+
+    NSSet *grantedPermissions = [FBSDKAccessToken currentAccessToken].permissions;
 
     for (NSString *value in permissions) {
-    	NSLog(@"Checking permission %@.", value);
+        NSLog(@"Checking permission %@.", value);
         if (![grantedPermissions containsObject:value]) { //checks if permissions does not exists
             CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
-            												 messageAsString:@"A permission has been denied"];
+                                                             messageAsString:@"A permission has been denied"];
             [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
             return;
         }
     }
-    
+
     CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
-    												 messageAsString:@"All permissions have been accepted"];
+                                                     messageAsString:@"All permissions have been accepted"];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     return;
 }
@@ -286,8 +303,9 @@
     if (self.loginManager == nil) {
         self.loginManager = [[FBSDKLoginManager alloc] init];
     }
-    
+
     FBSDKLoginManagerLoginResultBlock reauthorizeHandler = ^void(FBSDKLoginManagerLoginResult *result, NSError *error) {
+        [self didFinishLogin: error command:command];
         if (error) {
             NSString *errorMessage = error.userInfo[FBSDKErrorLocalizedDescriptionKey] ?: @"There was a problem logging you in.";
             CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
@@ -296,7 +314,7 @@
             return;
         } else if (result.isCancelled) {
             CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
-                                                              messageAsString:@"User cancelled."];
+                                                              messageAsString:kCancelledErrorMessage];
             [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         } else {
             CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
@@ -304,8 +322,13 @@
             [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         }
     };
-    
-    [self.loginManager reauthorizeDataAccess:[self topMostController] handler:reauthorizeHandler];
+
+    __weak __typeof(self) weakSelf = self;
+
+    [self loginWithExtendedViewControllerCommand:command completion:^{
+        [weakSelf.loginManager reauthorizeDataAccess:[weakSelf topMostController] handler:reauthorizeHandler];
+    }];
+
 }
 
 - (void) logout:(CDVInvokedUrlCommand*)command
@@ -372,13 +395,13 @@
         dialog.delegate = self;
         // Adopt native share sheets with the following line
         if (params[@"share_sheet"]) {
-        	dialog.mode = FBSDKShareDialogModeShareSheet;
+            dialog.mode = FBSDKShareDialogModeShareSheet;
         } else if (params[@"share_feedBrowser"]) {
-        	dialog.mode = FBSDKShareDialogModeFeedBrowser;
+            dialog.mode = FBSDKShareDialogModeFeedBrowser;
         } else if (params[@"share_native"]) {
-        	dialog.mode = FBSDKShareDialogModeNative;
+            dialog.mode = FBSDKShareDialogModeNative;
         } else if (params[@"share_feedWeb"]) {
-        	dialog.mode = FBSDKShareDialogModeFeedWeb;
+            dialog.mode = FBSDKShareDialogModeFeedWeb;
         }
 
         [dialog show];
@@ -488,7 +511,8 @@
         return;
     }
 
-    [self loginWithPermissions:requestPermissions withHandler:^(FBSDKLoginManagerLoginResult *result, NSError *error) {
+    [self loginWithPermissions:requestPermissions command:command withHandler:^(FBSDKLoginManagerLoginResult *result, NSError *error) {
+           [self didFinishLogin: error command:command];
         if (error) {
             // If the SDK has a message for the user, surface it.
             NSString *errorMessage = error.userInfo[FBSDKErrorLocalizedDescriptionKey] ?: @"There was a problem logging you in.";
@@ -498,7 +522,7 @@
             return;
         } else if (result.isCancelled) {
             CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
-                                                              messageAsString:@"User cancelled."];
+                                                              messageAsString:kCancelledErrorMessage];
             [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
             return;
         }
@@ -553,12 +577,56 @@
 
 #pragma mark - Utility methods
 
-- (void) loginWithPermissions:(NSArray *)permissions withHandler:(FBSDKLoginManagerLoginResultBlock) handler {
+- (void) loginWithPermissions:(NSArray *)permissions command:(CDVInvokedUrlCommand *)command withHandler:(FBSDKLoginManagerLoginResultBlock) handler {
     if (self.loginManager == nil) {
         self.loginManager = [[FBSDKLoginManager alloc] init];
     }
 
-    [self.loginManager logInWithPermissions:permissions fromViewController:[self topMostController] handler:handler];
+    __weak __typeof(self) weakSelf = self;
+
+    [self loginWithExtendedViewControllerCommand: command completion:^{
+        [weakSelf.loginManager logInWithPermissions:permissions fromViewController:[weakSelf topMostController] handler:handler];
+    }];
+
+}
+
+- (void) loginWithExtendedViewControllerCommand :(CDVInvokedUrlCommand *)command completion:(void (^)(void))completionHandler{
+    self.loginStarted = YES;
+    self.internalViewController = [FBViewController new];
+    self.internalViewController.modalPresentationStyle = UIModalPresentationOverCurrentContext;
+    self.internalViewController.modalTransitionStyle = UIModalTransitionStyleCrossDissolve;
+    self.internalViewController.view.backgroundColor = [UIColor clearColor];
+
+    __weak __typeof(self) weakSelf = self;
+
+    self.internalViewController.presentedHandler = ^(UIViewController *presented) {
+
+        if (weakSelf.loginStarted && presented != nil) {
+            weakSelf.loginControllerShown = YES;
+        }
+        if (weakSelf.loginControllerShown && presented == nil) {
+            [weakSelf didFinishLogin: [NSError errorWithDomain:kCancelledDomain code:0 userInfo:nil] command: command];
+        }
+
+    };
+
+    [self.viewController presentViewController:self.internalViewController animated:NO completion: ^{
+         completionHandler();
+    }];
+
+}
+
+- (void) didFinishLogin: (NSError *)error command:(CDVInvokedUrlCommand *)command {
+    self.loginControllerShown = NO;
+    self.loginStarted = NO;
+
+    [self.internalViewController dismissViewControllerAnimated:NO completion:nil];
+    self.internalViewController = nil;
+
+    if ([error.domain isEqualToString:kCancelledDomain]) {
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:kCancelledErrorMessage];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    }
 }
 
 - (UIViewController*) topMostController {
@@ -699,7 +767,7 @@
     }
 
     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
-                                                      messageAsString:@"User cancelled."];
+                                                      messageAsString:kCancelledErrorMessage];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:self.dialogCallbackId];
     self.dialogCallbackId = nil;
 }
