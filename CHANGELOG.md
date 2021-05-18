@@ -1,3 +1,9 @@
+# 2.3.0 (2021-05-18)
+
+## Bug Fixes
+
+* iOS: callback added from clicking by overlay, issue relevant only for ios >= 14 < 14.5
+
 <a name="2.3.0"></a>
 # [2.3.0](https://github.com/cordova-plugin-facebook-connect/cordova-plugin-facebook-connect/releases/tag/v2.3.0) (2021-04-21)
 
