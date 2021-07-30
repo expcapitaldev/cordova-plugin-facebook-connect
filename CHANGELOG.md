@@ -1,3 +1,12 @@
+# 2.4.0-dev (2021-07-30)
+
+## Bug Fixes
+
+* iOS: wrong CFBundleURLSchemes, fb$APP_IDFACEBOOK_URL_SCHEME_SUFFIX_PLACEHOLDER -> fb[APP_ID]null, excepted fb[APP_ID]  
+
+<a name="2.4.0-dev"></a>
+# [2.4.0-dev](https://github.com/expcapitaldev/cordova-plugin-facebook-connect/tree/2.4.0-dev) (2021-07-30)
+
 # 2.3.0-dev (2021-05-18)
 
 ## Bug Fixes

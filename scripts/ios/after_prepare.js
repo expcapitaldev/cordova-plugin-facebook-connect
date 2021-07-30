@@ -39,7 +39,8 @@ module.exports = function (context) {
   	FACEBOOK_URL_SCHEME_SUFFIX = getPreferenceValue("FACEBOOK_URL_SCHEME_SUFFIX")
   }
 
-  if(FACEBOOK_URL_SCHEME_SUFFIX === ' ') {
+  // if suffix empty string, will be return null
+  if(FACEBOOK_URL_SCHEME_SUFFIX === ' ' || FACEBOOK_URL_SCHEME_SUFFIX == null) {
     FACEBOOK_URL_SCHEME_SUFFIX = ''
   }
 
