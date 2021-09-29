@@ -1,5 +1,21 @@
 var exec = require('cordova/exec')
 
+exports.getApplicationId = function (s, f) {
+  exec(s, f, 'FacebookConnectPlugin', 'getApplicationId', [])
+}
+
+exports.setApplicationId = function (appId, s, f) {
+  exec(s, f, 'FacebookConnectPlugin', 'setApplicationId', [appId])
+}
+
+exports.getApplicationName = function (s, f) {
+  exec(s, f, 'FacebookConnectPlugin', 'getApplicationName', [])
+}
+
+exports.setApplicationName = function (appName, s, f) {
+  exec(s, f, 'FacebookConnectPlugin', 'setApplicationName', [appName])
+}
+
 exports.getLoginStatus = function (force, s, f) {
   if (typeof force === 'function') {
     s = force;
@@ -47,6 +63,22 @@ exports.setAdvertiserIDCollectionEnabled = function (enabled, s, f) {
 
 exports.setAdvertiserTrackingEnabled = function (enabled, s, f) {
   exec(s, f, 'FacebookConnectPlugin', 'setAdvertiserTrackingEnabled', [enabled]);
+}
+
+exports.setDataProcessingOptions = function (options, country, state, s, f) {
+  if (!(country >= 0 && state >= 0)) {
+    exec(s, f, 'FacebookConnectPlugin', 'setDataProcessingOptions', [options]);
+  } else {
+    exec(s, f, 'FacebookConnectPlugin', 'setDataProcessingOptions', [options, country, state]);
+  }
+}
+
+exports.setUserData = function (userData, s, f) {
+  exec(s, f, 'FacebookConnectPlugin', 'setUserData', [userData])
+}
+
+exports.clearUserData = function (s, f) {
+  exec(s, f, 'FacebookConnectPlugin', 'clearUserData', [])
 }
 
 exports.logEvent = function (name, params, valueToSum, s, f) {
