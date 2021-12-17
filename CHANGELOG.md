@@ -1,4 +1,15 @@
 <a name="3.2.0"></a>
+# [3.2.0-dev-1.0](https://github.com/expcapitaldev/cordova-plugin-facebook-connect/tree/3.2.0-dev-1.0) (2021-12-17)
+
+## Features
+
+* Updated the Facebook SDK to 11.2.1 for iOS
+
+## Bug Fixes
+
+* fix(ios): relevant for ios >=14 and <14.5 , callback added from clicking by overlay, see https://github.com/cordova-plugin-facebook-connect/cordova-plugin-facebook-connect/pull/58
+
+<a name="3.2.0"></a>
 # [3.2.0](https://github.com/cordova-plugin-facebook-connect/cordova-plugin-facebook-connect/releases/tag/v3.2.0) (2021-09-17)
 
 ## Features
