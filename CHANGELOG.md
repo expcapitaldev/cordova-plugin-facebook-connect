@@ -1,3 +1,15 @@
+<a name="4.0.0"></a>
+# [3.2.0-dev-2.0](https://github.com/expcapitaldev/cordova-plugin-facebook-connect/tree/3.2.0-dev-2.0) (2022-06-18)
+
+## Breaking Changes
+
+* A Client Token is now required when adding the plugin. Client Tokens can be set using the new `CLIENT_TOKEN` preference. Developers can also get and set Client Tokens in code using the new `getClientToken` and `setClientToken` methods. See [Facebook docs](https://developers.facebook.com/docs/facebook-login/access-tokens/#clienttokens) for more information
+
+## Features
+
+* Updated the Facebook SDK to 12.3.2 for iOS
+* Updated the Facebook SDK to 12.3.0 for Android
+
 <a name="3.2.0"></a>
 # [3.2.0-dev-1.0](https://github.com/expcapitaldev/cordova-plugin-facebook-connect/tree/3.2.0-dev-1.0) (2021-12-17)
 

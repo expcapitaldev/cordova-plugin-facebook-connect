@@ -80,7 +80,7 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
 
 - (void) applicationDidBecomeActive:(NSNotification *) notification {
     if (FBSDKSettings.isAutoLogAppEventsEnabled) {
-        [FBSDKAppEvents activateApp];
+        [FBSDKAppEvents.shared activateApp];
     }
     if (self.applicationWasActivated == NO) {
         self.applicationWasActivated = YES;
@@ -109,9 +109,27 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
         [self returnInvalidArgsError:command.callbackId];
         return;
     }
-    
+
     NSString *appId = [command argumentAtIndex:0];
     [FBSDKSettings setAppID:appId];
+    [self returnGenericSuccess:command.callbackId];
+}
+
+- (void)getClientToken:(CDVInvokedUrlCommand *)command {
+    NSString *clientToken = FBSDKSettings.clientToken;
+    CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:clientToken];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+
+- (void)setClientToken:(CDVInvokedUrlCommand *)command {
+    if ([command.arguments count] == 0) {
+        // Not enough arguments
+        [self returnInvalidArgsError:command.callbackId];
+        return;
+    }
+
+    NSString *clientToken = [command argumentAtIndex:0];
+    [FBSDKSettings setClientToken:clientToken];
     [self returnGenericSuccess:command.callbackId];
 }
 
@@ -127,7 +145,7 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
         [self returnInvalidArgsError:command.callbackId];
         return;
     }
-    
+
     NSString *displayName = [command argumentAtIndex:0];
     [FBSDKSettings setDisplayName:displayName];
     [self returnGenericSuccess:command.callbackId];
@@ -138,10 +156,10 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
         [self returnLimitedLoginMethodError:command.callbackId];
         return;
     }
-    
+
     BOOL force = [[command argumentAtIndex:0] boolValue];
     if (force) {
-        [FBSDKAccessToken refreshCurrentAccessToken:^(FBSDKGraphRequestConnection *connection, id result, NSError *error) {
+        [FBSDKAccessToken refreshCurrentAccessTokenWithCompletion: ^(id<FBSDKGraphRequestConnecting> connection, id result, NSError *error) {
             CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
                                                           messageAsDictionary:[self loginResponseObject]];
             [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
@@ -158,7 +176,7 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
         [self returnLimitedLoginMethodError:command.callbackId];
         return;
     }
-    
+
     // Return access token if available
     CDVPluginResult *pluginResult;
     // Check if the session is open or not
@@ -203,7 +221,7 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
     } else {
         NSString *country = [command.arguments objectAtIndex:1];
         NSString *state = [command.arguments objectAtIndex:2];
-        [FBSDKSettings setDataProcessingOptions:options country:country state:state];  
+        [FBSDKSettings setDataProcessingOptions:options country:country state:state];
     }
     [self returnGenericSuccess:command.callbackId];
 }
@@ -223,15 +241,15 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
             [self.commandDelegate sendPluginResult:res callbackId:command.callbackId];
             return;
         } else {
-            [FBSDKAppEvents setUserEmail:(NSString *)params[@"em"] 
-                            firstName:(NSString*)params[@"fn"] 
-                            lastName:(NSString *)params[@"ln"] 
-                            phone:(NSString *)params[@"ph"] 
-                            dateOfBirth:(NSString *)params[@"db"] 
-                            gender:(NSString *)params[@"ge"] 
-                            city:(NSString *)params[@"ct"] 
-                            state:(NSString *)params[@"st"] 
-                            zip:(NSString *)params[@"zp"] 
+            [FBSDKAppEvents setUserEmail:(NSString *)params[@"em"]
+                            firstName:(NSString*)params[@"fn"]
+                            lastName:(NSString *)params[@"ln"]
+                            phone:(NSString *)params[@"ph"]
+                            dateOfBirth:(NSString *)params[@"db"]
+                            gender:(NSString *)params[@"ge"]
+                            city:(NSString *)params[@"ct"]
+                            state:(NSString *)params[@"st"]
+                            zip:(NSString *)params[@"zp"]
                             country:(NSString *)params[@"cn"]];
         }
 
@@ -288,7 +306,7 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
     [self.commandDelegate runInBackground:^{
         double value = [[command.arguments objectAtIndex:0] doubleValue];
         NSString *currency = [command.arguments objectAtIndex:1];
-        
+
         if ([command.arguments count] == 2 ) {
             [FBSDKAppEvents logPurchase:value currency:currency];
         } else if ([command.arguments count] >= 3) {
@@ -311,7 +329,7 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
 
     // this will prevent from being unable to login after updating plugin or changing permissions
     // without refreshing there will be a cache problem. This simple call should fix the problems
-    [FBSDKAccessToken refreshCurrentAccessToken:nil];
+    [FBSDKAccessToken refreshCurrentAccessTokenWithCompletion:nil];
 
     FBSDKLoginManagerLoginResultBlock loginHandler = ^void(FBSDKLoginManagerLoginResult *result, NSError *error) {
         [self didFinishLogin: error command:command];
@@ -421,8 +439,8 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
     if ([command.arguments count] > 0) {
         permissions = command.arguments;
     }
-    
-    NSSet *grantedPermissions = [FBSDKAccessToken currentAccessToken].permissions; 
+
+    NSSet *grantedPermissions = [FBSDKAccessToken currentAccessToken].permissions;
 
     for (NSString *value in permissions) {
     	NSLog(@"Checking permission %@.", value);
@@ -433,7 +451,7 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
             return;
         }
     }
-    
+
     CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
     												 messageAsString:@"All permissions have been accepted"];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
@@ -457,12 +475,12 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
         [self returnLimitedLoginMethodError:command.callbackId];
         return;
     }
-    
+
     if (self.loginManager == nil) {
         self.loginManager = [[FBSDKLoginManager alloc] init];
     }
     self.loginTracking = FBSDKLoginTrackingEnabled;
-    
+
     FBSDKLoginManagerLoginResultBlock reauthorizeHandler = ^void(FBSDKLoginManagerLoginResult *result, NSError *error) {
         [self didFinishLogin: error command:command];
         if (error) {
@@ -543,46 +561,63 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
     } else if ([method isEqualToString:@"share"] || [method isEqualToString:@"feed"]) {
         // Create native params
         self.dialogCallbackId = command.callbackId;
-        FBSDKShareDialog *dialog = [[FBSDKShareDialog alloc] init];
-        dialog.fromViewController = [self topMostController];
+
         if (params[@"photo_image"]) {
-        	FBSDKSharePhoto *photo = [[FBSDKSharePhoto alloc] init];
-        	NSString *photoImage = params[@"photo_image"];
-        	if (![photoImage isKindOfClass:[NSString class]]) {
-        		NSLog(@"photo_image must be a string");
-        	} else {
-        		NSData *photoImageData = [[NSData alloc]initWithBase64EncodedString:photoImage options:NSDataBase64DecodingIgnoreUnknownCharacters];
-        		if (!photoImageData) {
-        			NSLog(@"photo_image cannot be decoded");
-        		} else {
-        			photo.image = [UIImage imageWithData:photoImageData];
-        			photo.userGenerated = YES;
-        		}
-        	}
-        	FBSDKSharePhotoContent *content = [[FBSDKSharePhotoContent alloc] init];
-        	content.photos = @[photo];
-        	dialog.shareContent = content;
+            FBSDKSharePhoto *photo = [[FBSDKSharePhoto alloc] init];
+            NSString *photoImage = params[@"photo_image"];
+            if (![photoImage isKindOfClass:[NSString class]]) {
+                NSLog(@"photo_image must be a string");
+            } else {
+                NSData *photoImageData = [[NSData alloc]initWithBase64EncodedString:photoImage options:NSDataBase64DecodingIgnoreUnknownCharacters];
+                if (!photoImageData) {
+                    NSLog(@"photo_image cannot be decoded");
+                } else {
+                    photo.image = [UIImage imageWithData:photoImageData];
+                    photo.userGenerated = YES;
+                }
+            }
+            FBSDKSharePhotoContent *content = [[FBSDKSharePhotoContent alloc] init];
+            content.photos = @[photo];
+
+            FBSDKShareDialog *dialog = [[FBSDKShareDialog alloc] initWithViewController:self.topMostController content:content delegate:self];
+            dialog.shareContent = content;
+            // Adopt native share sheets with the following line
+            if (params[@"share_sheet"]) {
+                dialog.mode = FBSDKShareDialogModeShareSheet;
+            } else if (params[@"share_feedBrowser"]) {
+                dialog.mode = FBSDKShareDialogModeFeedBrowser;
+            } else if (params[@"share_native"]) {
+                dialog.mode = FBSDKShareDialogModeNative;
+            } else if (params[@"share_feedWeb"]) {
+                dialog.mode = FBSDKShareDialogModeFeedWeb;
+            }
+
+            [dialog show];
+
         } else {
-        	FBSDKShareLinkContent *content = [[FBSDKShareLinkContent alloc] init];
-        	content.contentURL = [NSURL URLWithString:params[@"href"]];
-        	content.hashtag = [FBSDKHashtag hashtagWithString:[params objectForKey:@"hashtag"]];
-        	content.quote = params[@"quote"];
-        	dialog.shareContent = content;
-        }
-        dialog.delegate = self;
-        // Adopt native share sheets with the following line
-        if (params[@"share_sheet"]) {
-        	dialog.mode = FBSDKShareDialogModeShareSheet;
-        } else if (params[@"share_feedBrowser"]) {
-        	dialog.mode = FBSDKShareDialogModeFeedBrowser;
-        } else if (params[@"share_native"]) {
-        	dialog.mode = FBSDKShareDialogModeNative;
-        } else if (params[@"share_feedWeb"]) {
-        	dialog.mode = FBSDKShareDialogModeFeedWeb;
+            FBSDKShareLinkContent *content = [[FBSDKShareLinkContent alloc] init];
+            content.contentURL = [NSURL URLWithString:params[@"href"]];
+            content.hashtag = [FBSDKHashtag hashtagWithString:[params objectForKey:@"hashtag"]];
+            content.quote = params[@"quote"];
+
+            FBSDKShareDialog *dialog = [[FBSDKShareDialog alloc] initWithViewController:self.topMostController content:content delegate:self];
+            dialog.shareContent = content;
+            // Adopt native share sheets with the following line
+            if (params[@"share_sheet"]) {
+                dialog.mode = FBSDKShareDialogModeShareSheet;
+            } else if (params[@"share_feedBrowser"]) {
+                dialog.mode = FBSDKShareDialogModeFeedBrowser;
+            } else if (params[@"share_native"]) {
+                dialog.mode = FBSDKShareDialogModeNative;
+            } else if (params[@"share_feedWeb"]) {
+                dialog.mode = FBSDKShareDialogModeFeedWeb;
+            }
+
+            [dialog show];
         }
 
-        [dialog show];
         return;
+
     }
     else if ([method isEqualToString:@"apprequests"]) {
         FBSDKGameRequestDialog *dialog = [[FBSDKGameRequestDialog alloc] init];
@@ -653,7 +688,7 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
         [self returnLimitedLoginMethodError:command.callbackId];
         return;
     }
-    
+
     CDVPluginResult *pluginResult;
     if (! [FBSDKAccessToken currentAccessToken]) {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
@@ -684,7 +719,7 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
     permissions = [requestPermissions copy];
 
     // Defines block that handles the Graph API response
-    FBSDKGraphRequestBlock graphHandler = ^(FBSDKGraphRequestConnection *connection, id result, NSError *error) {
+    FBSDKGraphRequestCompletion graphHandler = ^(id<FBSDKGraphRequestConnecting> connection, id result, NSError *error) {
         CDVPluginResult* pluginResult;
         if (error) {
             NSString *message = error.userInfo[FBSDKErrorLocalizedDescriptionKey] ?: @"There was an error making the graph call.";
@@ -704,7 +739,7 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
 
     // If we have permissions to request
     if ([permissions count] == 0){
-        [request startWithCompletionHandler:graphHandler];
+        [request startWithCompletion:graphHandler];
         return;
     }
 
@@ -765,7 +800,7 @@ static NSString *const kCancelledErrorMessage = @"User cancelled";
 
 - (void) activateApp:(CDVInvokedUrlCommand *)command
 {
-    [FBSDKAppEvents activateApp];
+    [FBSDKAppEvents.shared activateApp];
     [self returnGenericSuccess:command.callbackId];
 }
 
