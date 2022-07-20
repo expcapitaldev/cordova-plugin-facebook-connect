@@ -2,7 +2,7 @@
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
         xmlns:android="http://schemas.android.com/apk/res/android"
         id="cordova-plugin-facebook-connect"
-        version="3.2.0-dev-1.0">
+        version="3.2.0-dev-1.1">
 
     <name>Facebook Connect</name>
 
@@ -77,7 +77,7 @@
             <activity android:name="com.facebook.FacebookActivity"
               android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
               android:label="@string/fb_app_name" />
-            <provider android:authorities="com.facebook.app.FacebookContentProvider$APP_ID"
+            <provider android:authorities="com.facebook.app.${applicationId}.FacebookContentProvider"
               android:name="com.facebook.FacebookContentProvider"
               android:exported="true" />
         </config-file>
