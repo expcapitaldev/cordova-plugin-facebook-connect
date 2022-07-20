@@ -1,4 +1,9 @@
-<a name="4.0.0"></a>
+# [3.2.0-dev-3.0](https://github.com/expcapitaldev/cordova-plugin-facebook-connect/tree/3.2.0-dev-3.0) (2022-06-18)
+
+## Features
+
+* Updated the Facebook SDK to 14.1.0 for Android
+
 # [3.2.0-dev-2.0](https://github.com/expcapitaldev/cordova-plugin-facebook-connect/tree/3.2.0-dev-2.0) (2022-06-18)
 
 ## Breaking Changes
