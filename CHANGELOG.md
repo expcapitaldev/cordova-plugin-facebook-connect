@@ -10,6 +10,12 @@
 * Updated the Facebook SDK to 12.3.2 for iOS
 * Updated the Facebook SDK to 12.3.0 for Android
 
+# [3.2.0-dev-1.1](https://github.com/expcapitaldev/cordova-plugin-facebook-connect/tree/3.2.0-dev-1.1) (2022-07-20)
+
+## Bug Fixes
+
+* fix(android): provider property `android:authorities` is updated for installing apps with similar APP_ID
+
 <a name="3.2.0"></a>
 # [3.2.0-dev-1.0](https://github.com/expcapitaldev/cordova-plugin-facebook-connect/tree/3.2.0-dev-1.0) (2021-12-17)
 
