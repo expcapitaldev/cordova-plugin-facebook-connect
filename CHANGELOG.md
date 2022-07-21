@@ -2,6 +2,7 @@
 
 ## Features
 
+* Updated the Facebook SDK to 14.1.0 for iOS
 * Updated the Facebook SDK to 14.1.0 for Android
 
 # [3.2.0-dev-2.0](https://github.com/expcapitaldev/cordova-plugin-facebook-connect/tree/3.2.0-dev-2.0) (2022-06-18)
